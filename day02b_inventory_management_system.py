@@ -20,9 +20,10 @@ from collections import Counter
 with open('models/day02.txt') as f:
     box_ids: List[str] = [line.strip() for line in f.readlines()]
 
+
 def compare_two_strings(str1: str, str2: str) -> str:
     LENGTH = len(str1)
-    
+
     same_letter_num = 0
     different_letter_pos = 0
 
@@ -31,13 +32,12 @@ def compare_two_strings(str1: str, str2: str) -> str:
             same_letter_num += 1
         else:
             different_letter_pos = i
- 
-    if same_letter_num == LENGTH -1:
+
+    if same_letter_num == LENGTH - 1:
         return str1[:different_letter_pos] + str1[different_letter_pos + 1:]
-   
+
 
 def find_the_box(box_ids: List[str]):
-    LENGTH = len(box_ids[0])
     for i in range(len(box_ids)):
         for j in range(i+1, len(box_ids)):
             ret = compare_two_strings(box_ids[i], box_ids[j])

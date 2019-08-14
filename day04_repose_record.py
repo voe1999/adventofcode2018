@@ -51,13 +51,14 @@ What is the ID of the guard you chose multiplied by the minute you chose? (In th
 
 from typing import Set, List, Dict, NamedTuple, Tuple
 from datetime import datetime
+from collections import Counter
 import re
 
 
-class Guard:
-    id: int
-    asleep_minutes: Set[int]
-    awake_minutes: Set[int]
+class Nap(NamedTuple):
+    guard_id: int
+    sleep_minute: int
+    wake_minute: int
 
 
 class Record(NamedTuple):
@@ -68,6 +69,23 @@ class Record(NamedTuple):
 with open('models/day04.txt') as f:
     records = [line.strip() for line in f.readlines()]
 
+TEST_RECORDS = """[1518-11-01 00:00] Guard #10 begins shift
+[1518-11-01 00:05] falls asleep
+[1518-11-01 00:25] wakes up
+[1518-11-01 00:30] falls asleep
+[1518-11-01 00:55] wakes up
+[1518-11-01 23:58] Guard #99 begins shift
+[1518-11-02 00:40] falls asleep
+[1518-11-02 00:50] wakes up
+[1518-11-03 00:05] Guard #10 begins shift
+[1518-11-03 00:24] falls asleep
+[1518-11-03 00:29] wakes up
+[1518-11-04 00:02] Guard #99 begins shift
+[1518-11-04 00:36] falls asleep
+[1518-11-04 00:46] wakes up
+[1518-11-05 00:03] Guard #99 begins shift
+[1518-11-05 00:45] falls asleep
+[1518-11-05 00:55] wakes up""".split('\n')
 
 def sort_records(records: List[str]) -> List[Record]:
     sorted_records = []
@@ -85,14 +103,80 @@ def sort_records(records: List[str]) -> List[Record]:
 # print(sort_records(records))
 
 
-def parse_record(record: Record):
-    current_guard_id = None
-    time = record.date
-    content = record.content
-    if 'Guard #' in content:
-        id = re.search('Guard #([0-9]+).*', content).group(1)
-        current_guard_id = id
-    if current_guard_id is not None:
-        Guard(current_guard_id)
+def get_naps_from_records(records: List[Record]) -> List[Nap]:
+    current_guard_id = sleep_minute = wake_minute = None
+    naps: List[Nap] = []
+    for record in records:
+        if 'Guard #' in record.content:
+            id = re.search('Guard #([0-9]+).*', record.content).group(1)
+            current_guard_id = int(id)
+        if 'falls asleep' in record.content:
+            sleep_minute = record.date[4]
+        if 'wakes up' in record.content:
+            wake_minute = record.date[4]
+        if current_guard_id is not None and sleep_minute is not None and wake_minute is not None:
+            naps.append(Nap(current_guard_id, sleep_minute, wake_minute))
+            sleep_minute = wake_minute = None
+    return naps
 
-parse_record(sort_records(records)[0])
+
+
+def get_sleepiest_guard(naps: List[Nap]) -> int:
+    counts = Counter()
+    for nap in naps:
+        counts[nap.guard_id] += (nap.wake_minute - nap.sleep_minute)
+    return counts.most_common(1)[0][0]
+
+def get_most_common_minute(naps: List[Nap], guard_id: int) -> int:
+    counts = Counter()
+    for nap in naps:
+        if guard_id == nap.guard_id:
+            for minute in range(nap.sleep_minute, nap.wake_minute):
+                counts[minute] += 1
+    return counts.most_common(1)[0][0]
+
+def main():
+    naps = get_naps_from_records(sort_records(records))
+    guard_id = get_sleepiest_guard(naps)
+    minute = get_most_common_minute(naps, guard_id)
+    print(guard_id * minute)
+main()
+
+"""
+Strategy 2: Of all guards, which guard is most frequently asleep on the same minute?
+
+In the example above, Guard #99 spent minute 45 asleep more than any other guard or minute - three times in total. (In all other cases, any guard spent any minute asleep at most twice.)
+
+What is the ID of the guard you chose multiplied by the minute you chose? (In the above example, the answer would be 99 * 45 = 4455.)
+"""
+
+def get_all_guards(naps: List[Nap]) -> Set[int]:
+    counts = Counter()
+    guards = set()
+    for nap in naps:
+        counts[nap.guard_id] += (nap.wake_minute - nap.sleep_minute)
+    for count in counts.most_common():
+        guards.add(count[0])
+    return guards
+
+def get_most_frequent_minute(naps: List[Nap], guard_id: int) -> Tuple[int, int]:
+    counts = Counter()
+    for nap in naps:
+        if guard_id == nap.guard_id:
+            for minute in range(nap.sleep_minute, nap.wake_minute):
+                counts[minute] += 1
+    return counts.most_common(1)[0]
+
+def main2():
+    naps = get_naps_from_records(sort_records(records))
+    guards = get_all_guards(naps)
+    minutes = {}
+    for guard in guards:
+        highest = get_most_frequent_minute(naps, guard)
+        minutes[highest] = guard
+    result = sorted(minutes.items(), key = lambda count: count[0][1], reverse = True)[0]
+    minute = result[0][0]
+    guard = result[1]
+    print(minute * guard)
+
+main2()

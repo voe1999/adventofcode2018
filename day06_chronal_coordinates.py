@@ -48,7 +48,7 @@ In this example, the areas of coordinates A, B, C, and F are infinite - while no
 What is the size of the largest area that isn't infinite?
 """
 
-from typing import NamedTuple, List, Set
+from typing import NamedTuple, List, Set, Dict
 
 from collections import Counter
 
@@ -64,24 +64,32 @@ class Location(NamedTuple):
     y: int
 
 
-class Candidate(NamedTuple):
+class Candidate:
     x: int
     y: int
     area: int
     locations: List[Location]
 
-    @classmethod
-    def get_area(self):
-        self.area = len(self.locations)
-        return self.area
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+        self.area = 0
+        self.locations = []
 
+    def __hash__(self):
+        return hash((self.x, self.y))
+
+    def get_area(self):
+        return len(self.locations)
+
+candidates: List[Candidate] = []
+locations: List[Location] = []
 
 def get_original_candidates(locations: List[str]):
-    candidates: List[Candidate] = []
+   
     for location in locations:
         x, y = [int(coord) for coord in location.split(', ')]
-        candidates.append(Candidate(x, y, 0, []))
-    return candidates
+        candidates.append(Candidate(x, y))
 
 def get_max_xy(candidates: List[Candidate]) -> Set[int]:
     xs: List[int] = []
@@ -92,34 +100,69 @@ def get_max_xy(candidates: List[Candidate]) -> Set[int]:
         ys.append(candidate.y)
     ret.add(max(xs))
     ret.add(max(ys))
+    print('max_x max_y: ', ret)
     return ret
 
-def get_all_locations(max_x: int, max_y: int) -> List[Location]:
-    locations: List[Location] = []
-    for x in range(max_x + 3):
-        for y in range(max_y + 3):
+def get_all_locations(max_x: int, max_y: int):
+    for x in range(-1, max_x + 20):
+        for y in range(-1, max_y + 20):
             locations.append(Location(x, y))
-    return locations     
 
 def calculate_manhattan_distance(l1: Location, l2: Candidate) -> int:
     return abs(l1.x - l2.x) + abs(l1.y - l2.y)
 
-def set_locations_to_candidate(locations: List[Location], candidates: List[Candidate]) -> int:
+def set_locations_to_candidate(locations: List[Location], candidates: List[Candidate]) -> List[int]:
     for location in locations:
-        distances: Counter = Counter()
+        distances: Dict = {}
         for candidate in candidates:
             distances[candidate] = calculate_manhattan_distance(location, candidate)
-        biggest_two = distances.most_common(2)
-        if biggest_two[0] > biggest_two[1]:
-            print(biggest_two)
-            # biggest_two[0][0].locations.append(location)
+        sorted_distances = sorted(distances.items(), key = lambda x: x[1])
+       
+        if sorted_distances[0][1] < sorted_distances[1][1]:
+            sorted_distances[0][0].locations.append(location)
+            # print('attribution: location is:', location, 'candidate is: ', sorted_distances[0][0].__dict__)
     areas = []
     for candidate in candidates:
         areas.append(candidate.get_area())
-    return max(areas)
+    return sorted(areas)
 
-candidates = get_original_candidates(TEST_CASE)
-max_x, max_y = get_max_xy(candidates)
-locations = get_all_locations(max_x, max_y)
 
-print(set_locations_to_candidate(locations, candidates))
+with open('models/day06.txt') as f:
+    get_original_candidates(f.readlines())
+    max_x, max_y = get_max_xy(candidates)
+    get_all_locations(max_x, max_y)
+
+    print(set_locations_to_candidate(locations, candidates))
+    
+"""
+On the other hand, if the coordinates are safe, maybe the best you can do is try to find a region near as many coordinates as possible.
+
+For example, suppose you want the sum of the Manhattan distance to all of the coordinates to be less than 32. For each location, add up the distances to all of the given coordinates; if the total of those distances is less than 32, that location is within the desired region. Using the same coordinates as above, the resulting region looks like this:
+
+..........
+.A........
+..........
+...###..C.
+..#D###...
+..###E#...
+.B.###....
+..........
+..........
+........F.
+In particular, consider the highlighted location 4,3 located at the top middle of the region. Its calculation is as follows, where abs() is the absolute value function:
+
+Distance to coordinate A: abs(4-1) + abs(3-1) =  5
+Distance to coordinate B: abs(4-1) + abs(3-6) =  6
+Distance to coordinate C: abs(4-8) + abs(3-3) =  4
+Distance to coordinate D: abs(4-3) + abs(3-4) =  2
+Distance to coordinate E: abs(4-5) + abs(3-5) =  3
+Distance to coordinate F: abs(4-8) + abs(3-9) = 10
+Total distance: 5 + 6 + 4 + 2 + 3 + 10 = 30
+Because the total distance to all coordinates (30) is less than 32, the location is within the region.
+
+This region, which also includes coordinates D and E, has a total size of 16.
+
+Your actual region will need to be much larger than this example, though, instead including all locations with a total distance of less than 10000.
+
+What is the size of the region containing all locations which have a total distance to all given coordinates of less than 10000?
+"""

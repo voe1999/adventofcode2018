@@ -127,12 +127,12 @@ def set_locations_to_candidate(locations: List[Location], candidates: List[Candi
     return sorted(areas)
 
 
-with open('models/day06.txt') as f:
-    get_original_candidates(f.readlines())
-    max_x, max_y = get_max_xy(candidates)
-    get_all_locations(max_x, max_y)
+# with open('models/day06.txt') as f:
+#     get_original_candidates(f.readlines())
+#     max_x, max_y = get_max_xy(candidates)
+#     get_all_locations(max_x, max_y)
 
-    print(set_locations_to_candidate(locations, candidates))
+#     print(set_locations_to_candidate(locations, candidates))
     
 """
 On the other hand, if the coordinates are safe, maybe the best you can do is try to find a region near as many coordinates as possible.
@@ -166,3 +166,20 @@ Your actual region will need to be much larger than this example, though, instea
 
 What is the size of the region containing all locations which have a total distance to all given coordinates of less than 10000?
 """
+
+def find_region(locations: List[Location], candidates: List[Candidate]) -> List[Location]:
+    region = []
+    for location in locations:
+        distances = []
+        for candidate in candidates:
+            distances.append(calculate_manhattan_distance(location, candidate))
+        if sum(distances) < 10000:
+            region.append(location)
+    return region
+
+with open('models/day06.txt') as f:
+    get_original_candidates(f.readlines())
+    max_x, max_y = get_max_xy(candidates)
+    get_all_locations(max_x, max_y)
+
+    print(len(find_region(locations, candidates)))

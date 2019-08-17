@@ -47,7 +47,7 @@ class Step:
         self.name = name
         self.prev_steps = []
         self.next_steps = []
-        finish_time = 99999
+        self.finish_time = 99999
 
 
 TEST_CASE = """Step C must be finished before step A can begin.
@@ -63,7 +63,7 @@ PATTERN = re.compile(
 
 
 def get_steps(instructions: List[str]):
-    steps = {}
+    steps: Dict[str, Step] = {}
     for instruction in instructions:
         match = re.match(PATTERN, instruction)
         if match:
@@ -139,61 +139,51 @@ In this example, it would take 15 seconds for two workers to complete these step
 With 5 workers and the 60+ second step durations described above, how long will it take to complete all of the steps?
 """
 
-# 检查有几个空闲工人
-def check_worker_availability(working_steps: Dict[str, Step], current_time: int, finished_steps: Set[str]) -> Tuple[int, Dict[str, Step], Set[str]]:
-    WORKER_CAPACITY = 2
-    finished: Set[str] = set()
-    print('!!!!!!', working_steps)
-    print('!!!!!!', working_steps.items())
-
-    for i, working_step in working_steps.items():
-        if working_step.finish_time <= current_time:
-            print('adding, ', working_step.__dict__)
-            finished.add(working_step.name)
-    print('!!!!!!!!!!!!!!!!!', finished)
-    for finished_work in finished:
-        del working_steps[finished_work]
-    finished_steps.update(finished)
-    del finished
-    return WORKER_CAPACITY - len(working_steps), working_steps, finished_steps
-
-# 从unfinished_steps里找出不多余空闲数量的工作给他们
-def disptach_work(unfinished_steps: Dict[str, Step], finished_steps: Set[str], working_steps: Dict[str, Step], available_workers: int, current_time: int):
-    letters = {chr(i): i - 64 for i in range(65, 91)}
-    sorted_steps = sorted(unfinished_steps.items(), key=lambda x: x[0])
-    dispatchable_works: List[str] = []
-    for i, sorted_step in sorted_steps:
-        if all([prev_step in finished_steps for prev_step in sorted_step.prev_steps]):
-            dispatchable_works.append(sorted_step.name)
-            dispatchable_works.sort()
-    print('current_time, dispatchable_works', current_time, dispatchable_works)
-    for j in range(min(available_workers, len(dispatchable_works))):
-        step = find_available_step(unfinished_steps, ''.join(finished_steps))
-        step.finish_time = current_time + letters[step.name]
-        working_steps[dispatchable_works[j]] = step
-    for dispatchable_work in dispatchable_works:
-        del unfinished_steps[dispatchable_work]
-    
-    return unfinished_steps, finished_steps, working_steps
 
 def work(steps: Dict[str, Step]):
+    all_steps = steps.copy()
     current_time = 0
     unfinished_steps = steps
     finished_steps: Set[str] = set()
     working_steps: Dict[str, Step] = {}
+    TIME_COMSUPTION = {chr(i): i - 4 for i in range(65, 91)}
 
-    while len(unfinished_steps) is not 0:
-        print('before: ', current_time, working_steps, finished_steps)
-        available_workers, working_steps, finished_steps = check_worker_availability(working_steps, current_time, finished_steps)
+    while len(finished_steps) != len(all_steps):
 
-        unfinished_steps, finished_steps, working_steps = disptach_work(unfinished_steps, finished_steps, working_steps, available_workers, current_time)
-        print('after: ', unfinished_steps, finished_steps, working_steps)
+        WORKER_CAPACITY = 5
 
+        tmp_finished = set()
+        if len(working_steps):
+            for (i, step) in working_steps.items():
+                if step.finish_time <= current_time:
+                    tmp_finished.add(step.name)
+            finished_steps.update(tmp_finished)
+            for finished_step in tmp_finished:
+                del working_steps[finished_step]
+
+        available_workers = WORKER_CAPACITY - len(working_steps)
+
+        sorted_steps: List[Tuple[str, Step]] = sorted(unfinished_steps.items(), key=lambda x: x[0])
+        dispatchable_works: List[str] = []
+        for i, sorted_step in sorted_steps:
+            if all([prev_step in finished_steps for prev_step in sorted_step.prev_steps]) or sorted_step.prev_steps == []:
+                dispatchable_works.append(sorted_step.name)
+                dispatchable_works.sort()
+
+        for j in range(min(available_workers, len(dispatchable_works))):
+            step = unfinished_steps[dispatchable_works[j]]
+            step.finish_time = current_time + TIME_COMSUPTION[step.name]
+            working_steps[dispatchable_works[j]] = step
+            del unfinished_steps[dispatchable_works[j]]
+        
+        print(current_time, working_steps, finished_steps)
         current_time += 1
-    return current_time
 
-print(work(get_steps(TEST_CASE)))
-# print(range(1))
-# for i in range(2):
-#     print(i)
+    return current_time - 1
 
+
+# print(work(get_steps(TEST_CASE)))
+
+with open('models/day07.txt') as f:
+    instructions = [instruction for instruction in f.readlines()]
+    print(work(get_steps(instructions)))

@@ -19,11 +19,7 @@ Step F must be finished before step E can begin.
 Visually, these requirements look like this:
 
 
-  -->A--->B--
- /    \      \
-C      -->D----->E
- \           /
-  ---->F-----
+
 Your first goal is to determine the order in which the steps should be completed. If more than one step is ready, choose the step which is first alphabetically. In this example, the steps would be completed as follows:
 
 Only C is available, and so it is done first.
@@ -37,9 +33,9 @@ So, in this example, the correct order is CABDFE.
 In what order should the steps in your instructions be completed?
 """
 
-from typing import List, Dict, Set
-import re, random
-from collections import Counter
+from typing import List, Dict, Set, NamedTuple
+import re
+
 
 class Step:
     name: str
@@ -60,76 +56,57 @@ Step B must be finished before step E can begin.
 Step D must be finished before step E can begin.
 Step F must be finished before step E can begin.""".split('\n')
 
-PATTERN = re.compile('Step ([A-Z]) must be finished before step ([A-Z]) can begin.')
+PATTERN = re.compile(
+    'Step ([A-Z]) must be finished before step ([A-Z]) can begin.')
+
 
 def get_steps(instructions: List[str]):
-    steps: Dict[str, Step] = {}
+    steps = {}
     for instruction in instructions:
-        name, next_step_name = re.match(PATTERN, instruction).groups()
-        try:
-            steps[name].next_steps.append(next_step_name)
-        except:
-            steps[name] = Step(name)
-            steps[name].next_steps.append(next_step_name)
+        match = re.match(PATTERN, instruction)
+        if match:
+            name, next_step_name = match.groups()
+            try:
+                steps[name].next_steps.append(next_step_name)
+            except:
+                steps[name] = Step(name)
+                steps[name].next_steps.append(next_step_name)
 
-        try:
-            steps[next_step_name].prev_steps.append(name)
-        except:
-            steps[next_step_name] = Step(next_step_name)
-            steps[next_step_name].prev_steps.append(name)
+            try:
+                steps[next_step_name].prev_steps.append(name)
+            except:
+                steps[next_step_name] = Step(next_step_name)
+                steps[next_step_name].prev_steps.append(name)
 
     return steps
 
 
-def get_first_step(steps: Dict[str, Step]):
-    random_step = list(steps.values())[random.randint(0, len(steps.keys()) - 1)]
-    while random_step.prev_steps != []:
-        step_name = random_step.prev_steps[random.randint(0, len(random_step.prev_steps) - 1)]
-        random_step = steps[step_name]
-    return random_step
+def get_first_step(steps: Dict[str, Step]) -> Dict[str, Step]:
+    all_steps = list(steps.values())
+    first_steps = {}
+    for step in all_steps:
+        if step.prev_steps == []:
+            first_steps[step.name] = step
+    return first_steps
 
-def process(steps: Dict[str, Step]) -> str:
+
+def find_available_step(steps: Dict[str, Step], finished_steps: str):
+    sorted_steps = sorted(steps.items(), key = lambda x: x[0])
+    for i, sorted_step in sorted_steps:
+        if all([prev_step in finished_steps for prev_step in sorted_step.prev_steps]):
+            return sorted_step
+
+def process(steps: Dict[str, Step]):
     order = ''
-    current_step = get_first_step(steps)
-    available_steps = set()
-    available_steps.add(current_step.name)
-    while True:
-        next_try_step, order, available_steps = try_make_a_step(current_step, order, available_steps, steps)
-        if next_try_step is None:
-            break
-        else:
-            current_step = next_try_step
-       
-    return order 
-
-def try_make_a_step(step: Step, executed_steps: str, available_steps: Set[str], steps: Dict[str, Step]):
-    try_step = step
-    while not all([prev_step in executed_steps for prev_step in try_step.prev_steps]):
-       not_completed_steps = [prev_step for prev_step in try_step.prev_steps if prev_step not in executed_steps]
-       try_step = steps[not_completed_steps[0]]
-
-    executed_steps += try_step.name
-    available_steps.add(try_step.name)
-    available_steps.update(try_step.next_steps)
-    available_steps.remove(try_step.name)
-    try:
-        next_try_step = steps[sorted(available_steps)[0]]
-        return next_try_step, executed_steps, available_steps
-    except:
-        return None, executed_steps, available_steps
-
-def get_step_names(ins: List[str]) -> Set[str]:
-    s = set()
-    for i in ins:
-        name, next_step_name = re.match(PATTERN, i).groups()
-        s.add(name)
-        s.add(next_step_name)
-    return s
+    while len(steps) is not 0:
+        candidate = find_available_step(steps, order)
+        order += candidate.name
+        del steps[candidate.name]
+    return order
+    
 
 # print(process(get_steps(TEST_CASE)))
 
 with open('models/day07.txt') as f:
     instructions = [line.strip() for line in f.readlines()]
-    string = process(get_steps(instructions))
-    print(string)
-
+    print(process(get_steps(instructions)))

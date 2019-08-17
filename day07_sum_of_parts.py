@@ -176,7 +176,6 @@ def work(steps: Dict[str, Step]):
             step.finish_time = current_time + TIME_COMSUPTION[step.name]
             working_steps[dispatchable_works[j]] = step
             del unfinished_steps[dispatchable_works[j]]
-
         print(current_time, working_steps, finished_steps)
         current_time += 1
 

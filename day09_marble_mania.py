@@ -59,42 +59,16 @@ class Marble(int):
         self = number
 
 
-class Circle(deque):
-    def next_n_index(self, current_index: int, step: int):
-        LENGTH = len(self)
-        try:
-            self[current_index]
-        except:
-            raise IndexError
+class Circle(deque):   #固定以0位作为当前指针
+    def is_not_23(self, element: int):
+        self.rotate(-2)
+        self.appendleft(element)
+    
 
-        if current_index + step > LENGTH:
-            return current_index + step - LENGTH
-        elif 0 < current_index + step <= LENGTH:
-            return current_index + step
-        elif -LENGTH < current_index + step <= 0:
-            return current_index + step + LENGTH
-        else:
-            raise Exception('wtf')
-
-    def normal_append(self, current_index: int, element: int):
-        index = self.next_n_index(current_index, 2)
-        if len(self) < 8:
-            self.insert(index, element)
-        else:
-            delta = len(self) - 1 - current_index - 1
-            self.rotate(delta)
-            self.append(element)
-            self.rotate(-delta+1)
-        return index
-
-    def when_23_happens(self, current_index: int):
-        index = self.next_n_index(current_index, -7)
-        score = self[index]
-        self.rotate(7-current_index)
-        self.popleft()
-        self.rotate(-7+current_index+1)
-        current_index = index
-        return score, current_index
+    def is_23(self) -> int:
+        self.rotate(7)
+        score = self.popleft()
+        return score
 
 
 def generate_players(players: List[int]) -> Iterator[int]:
@@ -129,29 +103,26 @@ def play_game(num_players: int, highest_marble: int):
     for turn in turns:
         
         if turn[1] % 23 != 0: # normal_append
-            current_index = circle.normal_append(current_index, turn[1])
-            print('circle after append ', current_index, circle)
+            current_index = circle.is_not_23(turn[1])
 
         else:                 # when_23_happens
             try:
                 scores[turn[0]] += turn[1]
             except:
                 scores[turn[0]] = turn[1]
-            score, current_index = circle.when_23_happens(current_index)
-            print('circle after del ', current_index, circle)
+            score = circle.is_23()
             scores[turn[0]] += score
     return max(scores.values())
 
-assert play_game(9,25) == 32
+# assert play_game(9,25) == 32
 # assert play_game(10,1618) == 8317
 # assert play_game(13,7999) == 146373
 # assert play_game(17,1104) == 2764
 # assert play_game(21,6111) == 54718
 # assert play_game(30,5807) == 37305
 
-# print(play_game(458, 7130700))
+print(play_game(458, 7130700))
 
-# [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
 
 # c = Circle([0, 16,  8, 17,  4, 18,  9, 19,  2, 20, 10, 21,  5,22,11,  1, 12,  6, 13,  3, 14,  7, 15] )
 # i = 13

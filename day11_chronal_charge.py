@@ -52,7 +52,7 @@ For grid serial number 42, the largest 3x3 square's top-left is 21,61 (with a to
 What is the X,Y coordinate of the top-left fuel cell of the 3x3 square with the largest total power?
 """
 
-from typing import List
+from typing import List, Dict, Tuple
 
 class Cell:
     x: int
@@ -89,28 +89,39 @@ class Square:
     y: int
     children: List[Cell]
     total_power_level: int
+    size: int
 
     def __init__(self, x: int, y: int, size: int):
         MAX_X = 300
         MAX_Y = 300
-        self.children = []
+        # self.children = []
 
         for cx in range(x, x+size):
             for cy in range(y, y+size):
                 if cx > MAX_X or cy > MAX_Y:
-                    self.children.clear()
+                    # self.children.clear()
                     raise Exception('exceeded range')
 
-                self.children.append(Cell(cx, cy))
+                # self.children.append(Cell(cx, cy))
 
         self.x = x
         self.y = y
+        self.size = size
 
     def get_total_power_level(self, serial_number: int):
         sum = 0
         for child in self.children:
             sum += child.get_power_level(serial_number)
         return sum
+
+    def get_total_power_level_with_summed_table(self, summed_area_table: Dict):
+        top_left_x = self.x
+        top_left_y = self.y
+        bottom_right_x = self.x + self.size
+        bottom_right_y = self.y + self.size
+
+        return summed_area_table[(top_left_x-1, top_left_y-1)] + summed_area_table[(bottom_right_x,bottom_right_y)] - summed_area_table[(bottom_right_x,top_left_y-1)] - summed_area_table[(top_left_x-1,bottom_right_y)]
+
 
 # print([s.__dict__ for s in Square(112,5).children])
 
@@ -150,4 +161,58 @@ For grid serial number 42, the largest total square (with a total power of 119) 
 What is the X,Y,size identifier of the square with the largest total power?
 """
 
-assert find_powerest_square(18) == (90,269,16)
+# assert find_powerest_square(18) == (90,269,16)
+
+
+# https://en.wikipedia.org/wiki/Summed-area_table
+
+#  31 02 04 33 05 36
+#  12 26 09 10 29 25
+#  13 17 21 22 20 18
+#  24 23 15 16 14 19
+
+
+#  31 33
+
+def find_powerest_square_with_any_size(serial_number: int):
+    original_table: Dict[Tuple[int,int], int] = {}
+    summed_area_table: Dict[Tuple[int,int], int] = {}
+
+    for i in range(1, 300 + 1):
+        for j in range(1, 300 + 1):
+            original_table[(i,j)] = Cell(i,j).get_power_level(serial_number)
+
+    i = 1
+    j = 1
+    for _ in range(1, 300 + 1):
+        for _ in range(1, 300 + 1):
+            try:
+                left_number = summed_area_table[(i-1, j)]
+            except:
+                left_number = 0
+
+            try:
+                top_number = summed_area_table[(i,j-1)]
+            except:
+                top_number = 0
+
+            summed_area_table[(i,j)] = left_number + top_number + original_table[(i,j)]
+
+            j += 1
+
+        i += 1
+
+    powers = {}
+
+    for i in range(1, 300 + 1):
+        for j in range(1, 300 + 1):
+            for size in range(1, 300 - max(i, j) + 1):
+                try:
+                    square = Square(i,j,size)
+                except:
+                    break
+                power_level = square.get_total_power_level_with_summed_table(summed_area_table)
+                powers[(i,j,size)] = power_level
+
+    sorsorted_powers = sorted(powers.items(), key=lambda x: x[1], reverse=True)
+    return sorted_powers[0][0]

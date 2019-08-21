@@ -53,6 +53,7 @@ What is the X,Y coordinate of the top-left fuel cell of the 3x3 square with the 
 """
 
 from typing import List, Dict, Tuple
+from time import time
 
 class Cell:
     x: int
@@ -115,12 +116,29 @@ class Square:
         return sum
 
     def get_total_power_level_with_summed_table(self, summed_area_table: Dict):
-        top_left_x = self.x
-        top_left_y = self.y
-        bottom_right_x = self.x + self.size
-        bottom_right_y = self.y + self.size
+        min_x = self.x
+        min_y = self.y
+        max_x = self.x + self.size
+        max_y = self.y + self.size
 
-        return summed_area_table[(top_left_x-1, top_left_y-1)] + summed_area_table[(bottom_right_x,bottom_right_y)] - summed_area_table[(bottom_right_x,top_left_y-1)] - summed_area_table[(top_left_x-1,bottom_right_y)]
+        try:
+            top_left = summed_area_table[(min_x-1, min_y-1)]
+        except:
+            top_left = 0
+        try:
+            bottom_right = summed_area_table[(max_x,max_y)]
+        except:
+            bottom_right = 0
+        try:
+            top_right = summed_area_table[(max_x,min_y-1)]
+        except:
+            top_right = 0
+        try:
+            bottom_left = summed_area_table[(min_x-1,max_y)]
+        except:
+            bottom_left = 0
+        
+        return top_left + bottom_right - top_right - bottom_left
 
 
 # print([s.__dict__ for s in Square(112,5).children])
@@ -181,38 +199,81 @@ def find_powerest_square_with_any_size(serial_number: int):
     for i in range(1, 300 + 1):
         for j in range(1, 300 + 1):
             original_table[(i,j)] = Cell(i,j).get_power_level(serial_number)
-
+    # print('original table ', original_table)
     i = 1
-    j = 1
-    for _ in range(1, 300 + 1):
-        for _ in range(1, 300 + 1):
+    for _ in range(1, 300):
+        j = 1
+        for _ in range(1, 300):
             try:
                 left_number = summed_area_table[(i-1, j)]
             except:
                 left_number = 0
-
             try:
                 top_number = summed_area_table[(i,j-1)]
             except:
                 top_number = 0
-
             summed_area_table[(i,j)] = left_number + top_number + original_table[(i,j)]
-
             j += 1
-
         i += 1
 
     powers = {}
 
     for i in range(1, 300 + 1):
         for j in range(1, 300 + 1):
-            for size in range(1, 300 - max(i, j) + 1):
+            # start_time = time()
+            for size in range(10, 40):
+                print(i,j,size)
+               
                 try:
                     square = Square(i,j,size)
+                    
                 except:
                     break
                 power_level = square.get_total_power_level_with_summed_table(summed_area_table)
                 powers[(i,j,size)] = power_level
+                
+            # print('time cost ', time() - start_time)
 
-    sorsorted_powers = sorted(powers.items(), key=lambda x: x[1], reverse=True)
+    sorted_powers = sorted(powers.items(), key=lambda x: x[1], reverse=True)
     return sorted_powers[0][0]
+
+
+# assert find_powerest_square_with_any_size(18) == (90,269,16)
+# print(find_powerest_square_with_any_size(9810))
+
+from collections import defaultdict
+import fileinput
+
+def summed_area_table(n):
+    t = defaultdict(int)
+    for y in range(1, 301):
+        for x in range(1, 301):
+            # compute the value of this cell using the specified formula
+            r = x + 10
+            p = (((r * y + n) * r) // 100) % 10 - 5
+            # store the result in summed-area form
+            t[(x, y)] = p + t[(x, y - 1)] + t[(x - 1, y)] - t[(x - 1, y - 1)]
+    return t
+
+# derive the sum of this region by checking four corners in the summed-area table
+def region_sum(t, s, x, y):
+    x0, y0, x1, y1 = x - 1, y - 1, x + s - 1, y + s - 1
+    return t[(x0, y0)] + t[(x1, y1)] - t[(x1, y0)] - t[(x0, y1)]
+
+# using the summed-area table `t` and a region size `s` find the sub region with a maximal sum
+def best(t, s):
+    rs = []
+    for y in range(1, 301 - s + 1):
+        for x in range(1, 301 - s + 1):
+            r = region_sum(t, s, x, y)
+            rs.append((r, x, y))
+    return max(rs)
+
+# build the summed area table
+t = summed_area_table(9810)
+
+# find the best 3x3 region
+print('%d,%d' % best(t, 3)[1:])
+
+# find the best region of any size
+print('%d,%d,%d' % max(best(t, s) + (s,) for s in range(1, 301))[1:])

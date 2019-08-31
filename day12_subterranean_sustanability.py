@@ -81,58 +81,114 @@ TEST_PATTERN = """...## => #
 ###.# => #
 ####. => #"""
 
-from typing import Dict, List
-from collections import deque
 import re
+from typing import Dict, List
+
 
 def get_initial_state(input: str) -> List[str]:
-      return list(input)
+    return list(input)
+
 
 Predictions = Dict[str, str]
 
+
 def prepare_predictions(input: str) -> Predictions:
-      patterns = input.split('\n')
-      predictions: Predictions = {}
-      for pattern in patterns:
-            combo, prediction = re.match(r'(.*) => (.)', pattern).groups()
-            predictions[combo] = prediction
-      return predictions
+    patterns = input.split('\n')
+    predictions: Predictions = {}
+    for pattern in patterns:
+        combo, prediction = re.match(r'(.*) => (.)', pattern).groups()
+        predictions[combo] = prediction
+    return predictions
 
-def predict(generations: int, initial_state: List[str]):
-      predictions = prepare_predictions(TEST_PATTERN)
-      # negative-numbered pots, with index of "i"
-      left_part = list('.......................................................')
-      # positive-numbered pots, which is 'initial_state', with index of 'j'
 
-      # when predicting, concatenate the two lists
-      # pot_number = i if pot_number >= 0
-      # pot_number = j if pot_number < 0
-      all_pots_for_current_generation = left_part + initial_state
-      for _ in range(generations):
-            all_pots_for_next_generation = ['.', '.']
-            for i in range(2, len(all_pots_for_current_generation) - 2):
-                  pot_number = i - len(left_part)
-                  pot_left_1 = pot_number - 1
-                  pot_left_2 = pot_number - 2
-                  pot_right_1 = pot_number + 1
-                  pot_right_2 = pot_number + 2
+def predict(generations: int, initial_state: List[str], predictions: Predictions):
+    # negative-numbered pots, with index of "i"
+    left_part = list('.......................................................')
+    # positive-numbered pots, which is 'initial_state', with index of 'j'
+    right_part = initial_state.copy()
+    # when predicting, concatenate the two lists
+    # pot_number = i if pot_number >= 0
+    # pot_number = j if pot_number < 0
+    for _ in range(generations):
+        left_part.insert(0, '.')
+        left_part.insert(0, '.')
+        left_part.insert(0, '.')
+        right_part.append('.')
+        right_part.append('.')
+        right_part.append('.')
 
-                  plant1 = initial_state[pot_left_1] if pot_left_1 >=0 else left_part[pot_left_1]
-                  plant2 = initial_state[pot_left_2] if pot_left_2 >=0 else left_part[pot_left_2]
-                  plant3 = initial_state[pot_number] if pot_number >=0 else left_part[pot_number]
-                  plant4 = initial_state[pot_right_1] if pot_right_1 >=0 else left_part[pot_right_1]
-                  plant5 = initial_state[pot_right_2] if pot_right_2 >=0 else left_part[pot_right_2]
+        next_left_part = left_part.copy()
+        next_right_part = right_part.copy()
 
-                  plants = plant1 + plant2 + plant3 + plant4 + plant5
+        for i in range(2, len(left_part + right_part) - 2):
+            pot_number = i - len(left_part)
+            pot_left_1 = pot_number - 2
+            pot_left_2 = pot_number - 1
+            pot_right_1 = pot_number + 1
+            pot_right_2 = pot_number + 2
 
-                  try:
-                        prediction = predictions[plants]
-                  except:
-                        prediction = plant3
-                  all_pots_for_next_generation.append(prediction)
-            all_pots_for_current_generation = all_pots_for_next_generation
-      return ''.join(plant for plant in all_pots_for_current_generation)
+            plant1 = right_part[pot_left_1] if pot_left_1 >= 0 else left_part[pot_left_1]
+            plant2 = right_part[pot_left_2] if pot_left_2 >= 0 else left_part[pot_left_2]
+            plant3 = right_part[pot_number] if pot_number >= 0 else left_part[pot_number]
+            plant4 = right_part[pot_right_1] if pot_right_1 >= 0 else left_part[pot_right_1]
+            plant5 = right_part[pot_right_2] if pot_right_2 >= 0 else left_part[pot_right_2]
 
-print(predict(1, get_initial_state(TEST_CASE)))
+            plants = plant1 + plant2 + plant3 + plant4 + plant5
 
-                         
+            try:
+                prediction = predictions[plants]
+            except:
+                prediction = '.'
+
+            if pot_number >= 0:
+                next_right_part[pot_number] = prediction
+            else:
+                next_left_part[pot_number] = prediction
+
+        left_part = next_left_part
+        right_part = next_right_part
+
+        left_sum = sum([(i - len(left_part)) for i, c in enumerate(left_part) if c == '#'])
+        right_sum = sum([i for i, c in enumerate(right_part) if c == '#'])
+
+    # return ''.join(plant for plant in (left_part + right_part))
+    return left_sum + right_sum
+
+
+assert predict(20, get_initial_state(TEST_CASE), prepare_predictions(TEST_PATTERN)) == 325
+
+INPUT_CASE = '#...#..##.......####.#..###..#.##..########.#.#...#.#...###.#..###.###.#.#..#...#.#..##..#######.##'
+INPUT_PATTERN = """#..#. => #
+#.#.. => #
+###.. => #
+##..# => .
+.#.## => #
+..... => .
+...#. => #
+##.#. => #
+#.#.# => .
+###.# => #
+....# => .
+####. => #
+.##.. => #
+#.##. => #
+#..## => #
+##... => #
+#...# => .
+##.## => #
+.#... => .
+.#..# => #
+..#.# => #
+##### => .
+.#### => #
+..#.. => #
+#.### => .
+..##. => .
+.##.# => #
+.#.#. => .
+..### => .
+.###. => .
+...## => .
+#.... => ."""
+
+print(predict(20, get_initial_state(INPUT_CASE), prepare_predictions(INPUT_PATTERN)))

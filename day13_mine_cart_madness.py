@@ -330,10 +330,10 @@ def main2():
 \>+</ |
   |   ^
   \<->/"""
-    with open('models/day13.txt', 'r') as f:
-        RAW2 = f.read()
-    traffic_map, cars = init_map(TEST_CASE2)
-    car_ids = {(k + 1): v[1] for k, v in enumerate(sorted(cars.items(), key=lambda x: x[1].current_coords))}
+    with open('models/day13.txt', 'r') as f2:
+        RAW2 = f2.read()
+    traffic_map, cars = init_map(RAW2)
+    car_ids = {(k + 1): v[1] for k, v in enumerate(sorted(cars.items(), key=lambda x: x[1].current_coords[1]))}
 
     while len([good_car for good_car in car_ids.values() if good_car.crashed is False]) > 1:
         cars_coords = set([car.current_coords for car in car_ids.values() if car.crashed is False])
@@ -347,6 +347,7 @@ def main2():
             if car.current_coords not in cars_coords:
                 cars_coords.add(car.current_coords)
             else:
+                cars_coords.remove(car.current_coords)
                 car_ids[car_id].crashed = True
                 for other_id, other_car in car_ids.items():
                     if other_car.current_coords == car.current_coords and car_id != other_id:
